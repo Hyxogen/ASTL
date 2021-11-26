@@ -2,7 +2,7 @@ project "Sandbox"
 	language "C++"
 	cppdialect "C++20"
 	staticruntime "On"
-	kind "StaticLib"
+	kind "ConsoleApp"
 
 	files {
 		"src/**.hpp",
@@ -14,7 +14,8 @@ project "Sandbox"
 	}
 
 	includedirs {
-		"include"
+		"include",
+		"../ASTL/include"
 	}
 
 	targetdir ("%{wks.location}/bin/" .. outputdir .. "%{prj.name}")
