@@ -8,42 +8,96 @@
 
 namespace astl {
 
-	//TODO add iterator
+	template<class T>
+	class vector_iterator_base {
+	public:
+		using iterator_concept		= std::contiguous_iterator_tag;
+		using iterator_tag			= std::contiguous_iterator_tag;
+		using difference_type		= std::ptrdiff_t;
+		using value_type			= T;
+		using pointer				= T*;
+		using reference				= T&;
+
+	protected:
+		pointer m_Pointer;
+
+		vector_iterator_base(pointer data) : m_Pointer(data) {
+		
+		}
+
+	public:
+		vector_iterator_base operator++() {
+			m_Pointer++; return *this;
+		}
+
+		vector_iterator_base operator++(T) {
+			vector_iterator_base ret = *this;
+			++(*this);
+			return ret;
+		}
+
+		friend bool operator==(const vector_iterator_base& a, const vector_iterator_base& b) {
+			return a.m_Pointer == b.m_Pointer;
+		
+		}
+		friend bool operator!=(const vector_iterator_base& a, const vector_iterator_base& b) {
+			return a.m_Pointer != b.m_Pointer;
+		}
+	};
+
+	template<class T>
+	class vector_const_iterator : public vector_iterator_base<const T> {
+		using _base = vector_iterator_base<const T>;
+
+	public:
+		using value_type = T;
+		using pointer = const T*;
+		using reference = const T&;
+
+		vector_const_iterator(_base::pointer data) : _base(data) {
+
+		}
+
+		reference operator*() const {
+			return *this->m_Pointer;
+		}
+
+		pointer operator->() {
+			return this->m_Pointer;
+		}
+	};
+
+	template<class T>
+	class vector_iterator : public vector_iterator_base<T> {
+		using _base = vector_iterator_base<T>;
+
+	public:
+		vector_iterator(_base::pointer data) : _base(data) {
+
+		}
+
+		_base::reference operator*() const {
+			return *this->m_Pointer;
+		}
+
+		_base::pointer operator->() {
+			return this->m_Pointer;
+		}
+	};
 
 	template<class T, class Allocator = std::allocator<T>>
 	requires std::is_copy_assignable<T>::value
 	class vector {
-
-		struct iterator {
-			using iterator_category = std::forward_iterator_tag;
-			using difference_type = std::ptrdiff_t;
-			using value_type = T;
-			using pointer = T*;
-			using reference = T&;
-
-			iterator(pointer ptr) : m_Pointer(ptr) {}
-
-		private:
-			pointer m_Pointer;
-
-		public:
-			reference operator*() const { return *m_Pointer; }
-			pointer operator->() { return m_Pointer; }
-
-			iterator operator++() { m_Pointer++; return *this; }
-
-			iterator operator++(T) { iterator ret = *this; ++(*this); return ret; }
-
-			friend bool operator==(const iterator& a, const iterator& b) { return a.m_Pointer == b.m_Pointer; }
-			friend bool operator!=(const iterator& a, const iterator& b) { return a.m_Pointer != b.m_Pointer; }
-		};
-
+	public:
 		using value_type		= T;
 		using reference			= T&;
 		using pointer			= std::allocator_traits<Allocator>::pointer;
-		using const_referenc	= const T&;
+		using const_reference	= const T&;
 		using size_type			= std::size_t;
+		using iterator			= vector_iterator<T>;
+		using const_iterator	= vector_const_iterator<T>;
 
+	private:
 		size_type	m_Capacity = 0;
 		Allocator	*m_Allocator = nullptr;
 
@@ -64,7 +118,7 @@ namespace astl {
 
 		constexpr void push_back(const T& t) {
 			if (size() == m_Capacity)
-				reserve(ASTL_VECTOR_DEFAULT_RESERVE * sizeof(T));
+				reserve(ASTL_VECTOR_DEFAULT_RESERVE + size());
 			*m_Last = t;
 			m_Last++;
 		}
@@ -75,7 +129,7 @@ namespace astl {
 
 			size_type vec_size = size();
 
-			T* newPtr = m_Allocator->allocate(new_cap);
+			T* newPtr = m_Allocator->allocate(new_cap * sizeof(T));
 			if (m_Begin != nullptr) {
 				std::memcpy(newPtr, m_Begin, vec_size);
 				m_Allocator->deallocate(m_Begin, vec_size * sizeof(T));
@@ -90,8 +144,7 @@ namespace astl {
 		}
 
 		constexpr size_type size() const noexcept {
-			//TODO check if this works without static_cast
-			return m_Begin == nullptr ? 0 : static_cast<size_type>(m_End - m_Begin);
+			return m_Begin == nullptr ? 0 : (m_End - m_Begin);
 		}
 
 		constexpr iterator begin() noexcept {
@@ -101,5 +154,21 @@ namespace astl {
 		constexpr iterator end() noexcept {
 			return iterator(m_Last);
 		}
+
+		constexpr const_iterator cbegin() noexcept {
+			return const_iterator(m_Begin);
+		}
+
+		constexpr const_iterator cend() noexcept {
+			return const_iterator(m_Last);
+		}
+
+		constexpr reference operator[](size_type pos) {
+			return m_Begin[pos];
+		}
+		constexpr const_reference operator[](size_type pos) const {
+			return m_Begin[pos];
+		}
+
 	};
 }
