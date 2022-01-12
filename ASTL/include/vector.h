@@ -88,18 +88,20 @@ namespace astl {
 	template<class T, class Allocator = std::allocator<T>>
 	requires std::is_copy_assignable<T>::value
 	class vector {
+		using _alloc_traits = std::allocator_traits<Allocator>;
 	public:
 		using value_type		= T;
 		using reference			= T&;
-		using pointer			= std::allocator_traits<Allocator>::pointer;
+		using pointer			= _alloc_traits::pointer;
+		using const_pointer		= _alloc_traits::const_pointer;
 		using const_reference	= const T&;
 		using size_type			= std::size_t;
 		using iterator			= vector_iterator<T>;
 		using const_iterator	= vector_const_iterator<T>;
 
 	private:
-		size_type	m_Capacity = 0;
-		Allocator	*m_Allocator = nullptr;
+		size_type		m_Capacity = 0;
+		Allocator		m_Allocator;
 
 		//Pointer to first element
 		pointer m_Begin	= nullptr;
@@ -108,12 +110,17 @@ namespace astl {
 		//Pointer to end of array
 		pointer m_End	= nullptr;
 	public:
-		vector() {
+		constexpr vector() noexcept(noexcept(Allocator())) {
+			m_Allocator = Allocator();
+		}
+
+		constexpr explicit vector(const Allocator& alloc) noexcept : m_Allocator(alloc) {
 
 		}
 
-		~vector() {
-
+		constexpr ~vector() {
+			if (m_Begin != nullptr)
+				m_Allocator.deallocate(m_Begin, size() * sizeof(T));
 		}
 
 		constexpr void push_back(const T& t) {
@@ -124,15 +131,15 @@ namespace astl {
 		}
 
 		constexpr void reserve(size_type new_cap) {
-			if (m_Allocator == nullptr)
-				m_Allocator = new Allocator;
+			/*if (m_Allocator == nullptr)
+				m_Allocator = new Allocator;*/
 
 			size_type vec_size = size();
 
-			T* newPtr = m_Allocator->allocate(new_cap * sizeof(T));
+			T* newPtr = m_Allocator.allocate(new_cap * sizeof(T));
 			if (m_Begin != nullptr) {
 				std::memcpy(newPtr, m_Begin, vec_size);
-				m_Allocator->deallocate(m_Begin, vec_size * sizeof(T));
+				m_Allocator.deallocate(m_Begin, vec_size * sizeof(T));
 			}
 			m_Begin = newPtr;
 			m_Last = m_Begin + vec_size;
